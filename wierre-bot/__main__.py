@@ -42,6 +42,8 @@ def write_quotes():
 
 @bot.event
 async def on_ready():
+    activity = discord.Game("@me | 0.2.0")
+    await bot.change_presence(activity=activity)
     print(f'We have logged in as {bot.user}')
 
 @bot.event
