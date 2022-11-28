@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "wierre-bot"
+version = "0.1.0"
+description = ""
+authors = ["Noah <50159154+kevinshome@users.noreply.github.com>"]
+readme = "README.md"
+packages = [{include = "wierre_bot"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+py-cord = "^2.3.1"
+python-dotenv = "^0.21.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
