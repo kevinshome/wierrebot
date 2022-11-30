@@ -128,7 +128,7 @@ async def on_message(message: discord.Message):
                 str_queue += '> '+item+'\n\n'
             embed = discord.Embed(
                 title=f"Remaining items in queue ({len(_queue)})",
-                description=""
+                description=str_queue
             )
             await message.channel.send(embed=embed)
         elif command == '' or command == 'help':
