@@ -8,7 +8,7 @@ packages = [{include = "wierre_bot"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-py-cord = "^2.3.1"
+py-cord = "<2.4.1"
 python-dotenv = "^0.21.0"
 pygit2 = "^1.11.1"
 
