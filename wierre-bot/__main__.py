@@ -5,6 +5,7 @@ import random
 import discord
 from discord.ext.commands.bot import Bot
 from dotenv import load_dotenv
+from . import __version__
 
 load_dotenv()
 intents = discord.Intents.default()
@@ -42,7 +43,7 @@ def write_quotes():
 
 @bot.event
 async def on_ready():
-    activity = discord.Game("@me | 0.2.0")
+    activity = discord.Game(f"@me | {__version__}")
     await bot.change_presence(activity=activity)
     print(f'We have logged in as {bot.user}')
 
@@ -83,8 +84,8 @@ async def on_message(message: discord.Message):
             selection = random.choice(bar_queue)
             bar_queue.remove(selection)
             msg = await message.channel.send(selection)
-            await msg.add_reaction(b"\xf0\x9f\x94\xa5".decode())
-            await msg.add_reaction(b"\xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\xa6\xaf".decode())
+            await msg.add_reaction(b"\xf0\x9f\x94\xa5".decode()) # fire emoji
+            await msg.add_reaction(b"\xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\xa6\xaf".decode()) # blind man with cane emoji
             if len(bar_queue) == 0:
                 bar_queue = bars.copy()
         elif command == 'quote':
@@ -92,8 +93,8 @@ async def on_message(message: discord.Message):
             selection = random.choice(quote_queue)
             quote_queue.remove(selection)
             msg = await message.channel.send(selection)
-            await msg.add_reaction(b"\xf0\x9f\x94\xa5".decode())
-            await msg.add_reaction(b"\xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\xa6\xaf".decode())
+            await msg.add_reaction(b"\xf0\x9f\x97\xa3\xef\xb8\x8f".decode()) # speaking head silhouette emoji
+            await msg.add_reaction(b"\xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\xa6\xaf".decode()) # blind man with cane emoji
             if len(quote_queue) == 0:
                 quote_queue = quotes.copy()
         elif command == 'queue':

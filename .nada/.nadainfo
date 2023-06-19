@@ -1,0 +1,5 @@
+project_name: "wierre-bot"
+description: "Discord bot that returns wierre quotes/bars"
+licenses: []
+authors: ["Noah Tanner <50159154+kevinshome@users.noreply.github.com>"]
+repository_url: "https://github.com/kevinshome/wierrebot.git"
