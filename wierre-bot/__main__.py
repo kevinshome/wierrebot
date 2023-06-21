@@ -5,7 +5,6 @@ import sqlite3
 import random
 import discord
 import traceback
-from discord.ext.commands.bot import Bot
 from dotenv import load_dotenv
 from . import __version__
 
@@ -60,7 +59,7 @@ class wbList(list):
             super().append(item[0])
         random.shuffle(self)
 
-class WierreBot(Bot):
+class WierreBot(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.responses = {
