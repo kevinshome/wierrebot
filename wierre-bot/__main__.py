@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import sqlite3
 import random
@@ -7,6 +8,10 @@ import traceback
 from discord.ext.commands.bot import Bot
 from dotenv import load_dotenv
 from . import __version__
+
+BQ_MSG_PREFIX = re.compile(r"hey wi[']?erre[,]? give me a (bar|quote)(?!.)")
+ADD_MSG_PREFIX = re.compile(r"hey wi[']?erre[,]? add this (bar|quote)(?!.)")
+HELP_REGEX = re.compile(r"hey wi[']?erre[,]? i need help(?!.)")
 
 try:
     DATABASE_LOC = sys.argv[1]
@@ -82,64 +87,90 @@ class WierreBot(Bot):
 
 
 load_dotenv()
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 bot = WierreBot(intents=intents)
 
-def generate_help_msg(mention: str):
-    return f"""{mention} `bar` - return a random wi'erre bar
-{mention} `quote` - return a random wi'erre quote
-{mention} `add [ quote | bar ]` - add a msg to the database (must be a reply to a message sent by wi'erre)
-"""
+BQ_HELP = (
+    "```\n"
+    f"hey wierre, give me a [bar|quote]\n"
+    f"hey wierre give me a [bar|quote]\n"
+    f"hey wi'erre, give me a [bar|quote]\n"
+    f"hey wi'erre give me a [bar|quote]\n"
+    "```\n"
+)
+ADD_HELP = (
+    "```\n"
+    f"hey wierre, add this [bar|quote]\n"
+    f"hey wierre add this [bar|quote]\n"
+    f"hey wi'erre, add this [bar|quote]\n"
+    f"hey wi'erre add this [bar|quote]\n"
+    "```\n"
+)
+
+def generate_help_msg():
+    return (
+        "To get a bar or quote, say one of the following:\n"
+        f"{BQ_HELP}"
+        "To add a bar or quote, say one of the following (in reply to a wi'erre mesage):\n"
+        f"{ADD_HELP}"
+    )
 
 @bot.event
 async def on_ready():
-    activity = discord.Game(f"@me | {__version__}")
+    activity = discord.Game(f"hey wierre! | {__version__}")
     await bot.change_presence(activity=activity)
     print(f'We have logged in as {bot.user}')
 
 @bot.event
 async def on_message(message: discord.Message):
 
+    bqmatch = BQ_MSG_PREFIX.match(message.content)
+    addmatch = ADD_MSG_PREFIX.match(message.content)
+    helpmatch = HELP_REGEX.match(message.content)
+    if helpmatch:
+        await message.channel.send(generate_help_msg())
+    if bqmatch:
+        command = bqmatch.group(1)
+        selection = bot.responses[command]["queue"].pop()
+        msg = await message.channel.send(selection)
+        await msg.add_reaction(bot.responses[command]["reactions"]["positive"])
+        await msg.add_reaction(bot.responses[command]["reactions"]["negative"])
+    if addmatch and message.reference is not None:
+        bq_type = addmatch.group(1)
+
+        ref_msg: discord.Message = message.reference.cached_message or await message.channel.fetch_message(message.reference.message_id)
+        if ref_msg.author.id != 511047686510608384:
+            await message.channel.send("To add a message, it must have been sent by wi'erre.")
+            return
+
+        try:
+            bot.responses[bq_type]["queue"].append(ref_msg.content)
+            await message.channel.send(f"Added: '{ref_msg.content}'", delete_after=15)
+        except KeyError:
+            await message.channel.send(f"Unknown type: {bq_type}")
+        except sqlite3.IntegrityError:
+            await message.channel.send(f"That {bq_type} already exists in the database!")
     if bot.user.mention in message.content and message.author != bot.user:
         argv = message.content.split(bot.user.mention)[1].strip().split()
         command = argv[0]
         if message.reference is not None and command == 'add':
-            if len(argv) == 1:
-                await message.channel.send(
-                    "command `add` missing parameter: `type`\n"
-                    "options: `bar`, `quote`"
-                )
-                return 
-
-
-            ref_msg: discord.Message = message.reference.cached_message or await message.channel.fetch_message(message.reference.message_id)
-            if ref_msg.author.id != 511047686510608384:
-                await message.channel.send("To add a message, it must have been sent by wi'erre.")
-                return
-
-            try:
-                bot.responses[argv[1]]["queue"].append(ref_msg.content)
-                await message.channel.send(f"Added: '{ref_msg.content}'", delete_after=15)
-            except KeyError:
-                await message.channel.send(f"Unknown type: {argv[1]}")
-            except sqlite3.IntegrityError:
-                await message.channel.send(f"That {argv[1]} already exists in the database!")
-
-        elif message.reference is None and command == 'add':
-            await message.channel.send("The 'add' command must be used in a reply to the message you would like to add.")
+            await message.channel.send(
+                "This command has been changed, instead try one of the following:\n"
+                f"{ADD_HELP}"
+            )
         elif command in ["bar", "quote"]:
-            selection = bot.responses[command]["queue"].pop()
-            msg = await message.channel.send(selection)
-            await msg.add_reaction(bot.responses[command]["reactions"]["positive"])
-            await msg.add_reaction(bot.responses[command]["reactions"]["negative"])
+            await message.channel.send(
+                "This command has been changed, instead try one of the following:\n"
+                f"{BQ_HELP}"
+            )
         elif command == 'queue':
+            if message.author.id != 416752352977092611:
+                await message.channel.send("You are not authorized to use this command :(")
+                return
             if len(argv) == 1:
                 await message.channel.send("command `queue` missing parameter: `type`")
                 await message.channel.send("options: `bar`, `quote`")
                 return 
-            if message.author.id != 416752352977092611:
-                await message.channel.send("You are not authorized to use this command :(")
-                return
 
             _rtype = argv[1]
             try:
@@ -161,11 +192,7 @@ async def on_message(message: discord.Message):
             )
             await message.channel.send(embed=embed)
         elif command == '' or command == 'help':
-            embed = discord.Embed(
-                title="wi'erre bot help",
-                description=generate_help_msg(bot.user.mention)
-            )
-            await message.channel.send(embed=embed)
+            await message.channel.send(generate_help_msg())
         else:
             await message.channel.send(f"Unrecognized command: {command}")
 
