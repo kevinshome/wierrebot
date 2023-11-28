@@ -74,7 +74,7 @@ class WierreBot(discord.Client):
                 "queue": wbList("quote"), 
                 "reactions": {
                     "positive": b"\xf0\x9f\x97\xa3\xef\xb8\x8f".decode(), 
-                    "negative": b"\xf0\x9f\x91\xa8\xe2\x80\x8d\xf0\x9f\xa6\xaf".decode()
+                    "negative": b"\xe2\x81\x89\xef\xb8\x8f".decode()
                 }
             }
         }
@@ -120,9 +120,30 @@ async def on_ready():
     await bot.change_presence(activity=activity)
     print(f'We have logged in as {bot.user}')
 
+async def add_msg(bq_type: str, message: discord.Message):
+    ref_msg: discord.Message = message.reference.cached_message or await message.channel.fetch_message(message.reference.message_id)
+    if ref_msg.author.id != 511047686510608384:
+        await message.channel.send("To add a message, it must have been sent by wi'erre.")
+        return
+
+    try:
+        bot.responses[bq_type]["queue"].append(ref_msg.content)
+        await message.channel.send(f"Added: '{ref_msg.content}'", delete_after=15)
+    except KeyError:
+        await message.channel.send(f"Unknown type: {bq_type}")
+    except sqlite3.IntegrityError:
+        await message.channel.send(f"That {bq_type} already exists in the database!")
+
+async def send_bq(command: str, message: discord.Message):
+    selection = bot.responses[command]["queue"].pop()
+    msg = await message.channel.send(selection)
+    await msg.add_reaction(bot.responses[command]["reactions"]["positive"])
+    await msg.add_reaction(bot.responses[command]["reactions"]["negative"])
+
 @bot.event
 async def on_message(message: discord.Message):
 
+    # hey wierre, ...
     bqmatch = BQ_MSG_PREFIX.match(message.content)
     addmatch = ADD_MSG_PREFIX.match(message.content)
     helpmatch = HELP_REGEX.match(message.content)
@@ -130,38 +151,19 @@ async def on_message(message: discord.Message):
         await message.channel.send(generate_help_msg())
     if bqmatch:
         command = bqmatch.group(1)
-        selection = bot.responses[command]["queue"].pop()
-        msg = await message.channel.send(selection)
-        await msg.add_reaction(bot.responses[command]["reactions"]["positive"])
-        await msg.add_reaction(bot.responses[command]["reactions"]["negative"])
+        await send_bq(command, message)
     if addmatch and message.reference is not None:
         bq_type = addmatch.group(1)
+        await add_msg(bq_type, message)
 
-        ref_msg: discord.Message = message.reference.cached_message or await message.channel.fetch_message(message.reference.message_id)
-        if ref_msg.author.id != 511047686510608384:
-            await message.channel.send("To add a message, it must have been sent by wi'erre.")
-            return
-
-        try:
-            bot.responses[bq_type]["queue"].append(ref_msg.content)
-            await message.channel.send(f"Added: '{ref_msg.content}'", delete_after=15)
-        except KeyError:
-            await message.channel.send(f"Unknown type: {bq_type}")
-        except sqlite3.IntegrityError:
-            await message.channel.send(f"That {bq_type} already exists in the database!")
+    # @wierrebot ...
     if bot.user.mention in message.content and message.author != bot.user:
         argv = message.content.split(bot.user.mention)[1].strip().split()
         command = argv[0]
         if message.reference is not None and command == 'add':
-            await message.channel.send(
-                "This command has been changed, instead try one of the following:\n"
-                f"{ADD_HELP}"
-            )
+            await add_msg(bq_type, message)
         elif command in ["bar", "quote"]:
-            await message.channel.send(
-                "This command has been changed, instead try one of the following:\n"
-                f"{BQ_HELP}"
-            )
+            await send_bq(command, message)
         elif command == 'queue':
             if message.author.id != 416752352977092611:
                 await message.channel.send("You are not authorized to use this command :(")
